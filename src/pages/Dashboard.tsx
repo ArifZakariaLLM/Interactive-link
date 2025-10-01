@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Calendar, User, LogOut, Trash2, Edit, Globe, ChevronDown, Eye, FileEdit, Link, Copy, ExternalLink, RefreshCw, CheckCircle, Users, EyeOff, Lock, Unlock } from 'lucide-react';
+import { Plus, Calendar, User, LogOut, Trash2, Edit, Globe, ChevronDown, Eye, FileEdit, Link, Copy, ExternalLink, RefreshCw, CheckCircle, Users, EyeOff, Lock, Unlock, CreditCard } from 'lucide-react';
 import { cleanEmailForDisplay, formatTimeAgo } from '@/utils/userUtils';
 import { FileManager } from '@/utils/fileManager';
 import { toast } from 'sonner';
@@ -329,6 +329,15 @@ const Dashboard = () => {
             >
               <Users className="h-4 w-4" />
               Community
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/billing')}
+              className="flex items-center gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              Billing
             </Button>
             <Button
               variant="outline"

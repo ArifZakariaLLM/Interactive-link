@@ -16,6 +16,7 @@ import LivePreview from "./pages/LivePreview";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import ProjectCommunity from "./pages/ProjectCommunity";
+import Billing from "./pages/Billing";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/billing" element={<Billing />} />
             <Route path="/community" element={<ProjectCommunity />} />
             <Route path="/editor" element={<Editor />} />
             <Route path="/editor/:projectId" element={<Editor />} />

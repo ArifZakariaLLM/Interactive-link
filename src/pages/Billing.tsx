@@ -1,0 +1,336 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  ArrowLeft, 
+  CreditCard, 
+  Calendar, 
+  Check, 
+  Clock,
+  Sparkles,
+  AlertCircle
+} from 'lucide-react';
+import {
+  getUserSubscription,
+  getSubscriptionPlans,
+  getRemainingTrialDays,
+  formatCurrency,
+  formatDate,
+  createBillplzPayment,
+  createUserTrialSubscription,
+  type UserSubscription,
+  type SubscriptionPlan
+} from '@/lib/billing';
+import { toast } from 'sonner';
+
+const Billing = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [processingPayment, setProcessingPayment] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    loadBillingData();
+  }, [user, navigate]);
+
+  const loadBillingData = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      // Get user's subscription
+      let userSub = await getUserSubscription(user.id);
+
+      // If no subscription, create trial
+      if (!userSub) {
+        toast.info('Creating your free 7-day trial...');
+        await createUserTrialSubscription(user.id);
+        userSub = await getUserSubscription(user.id);
+      }
+
+      setSubscription(userSub);
+
+      // Get available plans
+      const availablePlans = await getSubscriptionPlans();
+      setPlans(availablePlans);
+    } catch (error) {
+      console.error('Error loading billing data:', error);
+      toast.error('Failed to load billing information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpgrade = async (planId: string) => {
+    if (!user) return;
+
+    setProcessingPayment(true);
+    try {
+      const result = await createBillplzPayment(user.id, planId);
+      
+      if (result) {
+        toast.success('Redirecting to payment...');
+        // In production, redirect to result.payment_url
+        // window.location.href = result.payment_url;
+        toast.info('Payment system will be integrated with Billplz/Stripe');
+      } else {
+        toast.error('Failed to create payment');
+      }
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast.error('Failed to process payment');
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4">
+            <Skeleton className="h-8 w-48" />
+          </div>
+        </header>
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Skeleton className="h-64" />
+            <Skeleton className="h-64" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const remainingDays = getRemainingTrialDays(subscription);
+  const isOnTrial = subscription?.status === 'trial';
+  const isActive = subscription?.status === 'active';
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/dashboard')}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <CreditCard className="h-6 w-6" />
+            Billing & Subscription
+          </h1>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+          {/* Current Subscription Status */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Current Subscription
+                {isOnTrial && (
+                  <Badge variant="secondary" className="ml-2">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Trial
+                  </Badge>
+                )}
+                {isActive && (
+                  <Badge className="ml-2 bg-green-500">
+                    <Check className="h-3 w-3 mr-1" />
+                    Active
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {isOnTrial && 'You are currently on a free trial'}
+                {isActive && 'Your subscription is active'}
+                {!isOnTrial && !isActive && 'No active subscription'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isOnTrial && (
+                <>
+                  <Alert className="mb-4">
+                    <Sparkles className="h-4 w-4" />
+                    <AlertDescription>
+                      You have <strong>{remainingDays} days</strong> remaining in your trial.
+                      Upgrade now to continue enjoying all features!
+                    </AlertDescription>
+                  </Alert>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Trial Started:</span>
+                      <span className="font-medium">
+                        {subscription?.trial_start_date && formatDate(subscription.trial_start_date)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Trial Ends:</span>
+                      <span className="font-medium">
+                        {subscription?.trial_end_date && formatDate(subscription.trial_end_date)}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {isActive && (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Plan:</span>
+                    <span className="font-medium">Pro Plan</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Billing Period:</span>
+                    <span className="font-medium">Monthly</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Next Billing Date:</span>
+                    <span className="font-medium">
+                      {subscription?.current_period_end && formatDate(subscription.current_period_end)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {!isOnTrial && !isActive && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Your trial has expired. Please upgrade to continue using premium features.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Subscription Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-2xl font-bold">
+                    {isOnTrial && `${remainingDays} Days`}
+                    {isActive && 'Active'}
+                    {!isOnTrial && !isActive && 'Expired'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {isOnTrial && 'Trial remaining'}
+                    {isActive && 'Subscription status'}
+                    {!isOnTrial && !isActive && 'Please renew'}
+                  </div>
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="text-sm font-medium mb-2">Features</div>
+                  <ul className="text-xs space-y-1 text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-3 w-3 text-green-500" />
+                      Unlimited projects
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-3 w-3 text-green-500" />
+                      Custom domains
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-3 w-3 text-green-500" />
+                      Priority support
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Available Plans */}
+        {isOnTrial && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4">Upgrade to Pro</h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {plans.map((plan) => (
+                <Card key={plan.id} className="relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold">
+                    BEST VALUE
+                  </div>
+                  <CardHeader>
+                    <CardTitle>{plan.name}</CardTitle>
+                    <CardDescription>{plan.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <div className="text-3xl font-bold">
+                        {formatCurrency(plan.price, plan.currency)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        per {plan.interval_type}
+                      </div>
+                    </div>
+
+                    <ul className="space-y-2 mb-6">
+                      {Array.isArray(plan.features) && plan.features.map((feature, index) => (
+                        <li key={index} className="flex items-center gap-2 text-sm">
+                          <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button
+                      className="w-full"
+                      onClick={() => handleUpgrade(plan.id)}
+                      disabled={processingPayment}
+                    >
+                      {processingPayment ? 'Processing...' : 'Upgrade Now'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Billing History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Billing History
+            </CardTitle>
+            <CardDescription>
+              View your past invoices and payment history
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No billing history yet</p>
+              <p className="text-sm">Your payment history will appear here</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Billing;
