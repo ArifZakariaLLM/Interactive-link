@@ -1,10 +1,42 @@
 # CepatBina - Multi-Tenant Website Builder with Custom Domain Support
 
+[![Deployment Status](https://img.shields.io/badge/deployment-testing-blue)](https://github.com/ArifZakariaLLM/Interactive-link)
+[![Node Version](https://img.shields.io/badge/node-v20.12.1-green)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> A powerful, scalable website builder platform that enables users to create projects, share them with the community, and connect custom domains—all with automatic SSL and global CDN.
+
 ## 🚀 Deployment Status
 
-**Last Updated**: January 25, 2025 at 10:15 AM UTC  
-**Status**: ![Deployment Status](https://img.shields.io/badge/deployment-testing-blue)  
-**Auto-Deploy**: Testing Vercel integration
+**Last Updated**: October 1, 2025  
+**Status**: Production Ready  
+**Auto-Deploy**: Vercel Integration Active
+
+---
+
+## 📋 Table of Contents
+
+- [System Overview](#system-overview)
+- [Live Demo Example](#live-demo-example)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Database Schema](#database-schema-supabase)
+- [Complete Feature Set](#complete-feature-set)
+- [File Structure](#file-structure)
+- [Domain Routing System](#the-domain-routing-system)
+- [Deployment Configuration](#deployment-configuration)
+- [Setup Instructions](#setup-instructions)
+- [Testing the System](#testing-the-system)
+- [Implementation Status](#current-implementation-status)
+- [Security Considerations](#security-considerations)
+- [Troubleshooting](#troubleshooting)
+- [API Reference](#api-reference)
+- [Getting Started](#getting-started)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## System Overview
 
 A complete website builder platform where users create projects, share them with the community, and connect custom domains. Each user can have multiple projects with different domains.
