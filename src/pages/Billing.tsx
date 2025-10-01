@@ -79,21 +79,42 @@ const Billing = () => {
 
     setProcessingPayment(true);
     try {
+      // Show payment processing steps
+      toast.info('Preparing payment session...');
+      
+      // Create payment record
       const result = await createBillplzPayment(user.id, planId);
       
       if (result) {
-        toast.success('Redirecting to payment...');
-        // In production, redirect to result.payment_url
+        // In production, redirect to payment gateway
+        // For Billplz: window.location.href = result.payment_url;
+        // For Stripe: window.location.href = result.checkout_url;
+        
+        toast.success('Payment session created!');
+        toast.info('🚀 In production, you will be redirected to Billplz/Stripe checkout');
+        
+        // Simulate payment gateway redirect
+        setTimeout(() => {
+          toast.loading('Redirecting to payment gateway...');
+        }, 1000);
+        
+        // In development, show what would happen:
+        setTimeout(() => {
+          toast.success('💡 Next steps: Complete payment → Webhook activates subscription → Instant access');
+        }, 2000);
+        
+        // Uncomment in production:
         // window.location.href = result.payment_url;
-        toast.info('Payment system will be integrated with Billplz/Stripe');
       } else {
-        toast.error('Failed to create payment');
+        toast.error('Failed to create payment session');
       }
     } catch (error) {
       console.error('Error processing payment:', error);
-      toast.error('Failed to process payment');
+      toast.error('Payment processing failed. Please try again.');
     } finally {
-      setProcessingPayment(false);
+      setTimeout(() => {
+        setProcessingPayment(false);
+      }, 3000);
     }
   };
 
@@ -262,13 +283,20 @@ const Billing = () => {
           </Card>
         </div>
 
-        {/* Available Plans */}
-        {isOnTrial && (
+        {/* Available Plans - Show for trial users AND expired/no subscription users */}
+        {(isOnTrial || !isActive) && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Upgrade to Pro</h2>
+            <h2 className="text-2xl font-bold mb-4">
+              {isOnTrial ? 'Upgrade to Pro' : 'Choose Your Plan'}
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              {isOnTrial 
+                ? 'Upgrade now to continue enjoying all features after your trial ends' 
+                : 'Subscribe to unlock all premium features and continue building'}
+            </p>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {plans.map((plan) => (
-                <Card key={plan.id} className="relative overflow-hidden">
+                <Card key={plan.id} className="relative overflow-hidden border-2 hover:border-primary transition-colors">
                   <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold">
                     BEST VALUE
                   </div>
@@ -297,11 +325,26 @@ const Billing = () => {
 
                     <Button
                       className="w-full"
+                      size="lg"
                       onClick={() => handleUpgrade(plan.id)}
                       disabled={processingPayment}
                     >
-                      {processingPayment ? 'Processing...' : 'Upgrade Now'}
+                      {processingPayment ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          {isOnTrial ? 'Upgrade Now' : 'Subscribe Now'}
+                        </>
+                      )}
                     </Button>
+
+                    <p className="text-xs text-center text-muted-foreground mt-3">
+                      Cancel anytime • Instant activation
+                    </p>
                   </CardContent>
                 </Card>
               ))}
