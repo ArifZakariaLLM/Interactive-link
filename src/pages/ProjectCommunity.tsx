@@ -338,6 +338,13 @@ const ProjectCommunity = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Description */}
+                  {project.description && (
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
+
                   {/* Domains */}
                   {project.domains.length > 0 && (
                     <div className="space-y-2 mb-3">
