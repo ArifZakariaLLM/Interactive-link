@@ -65,7 +65,33 @@ const Billing = () => {
 
       // Get available plans
       const availablePlans = await getSubscriptionPlans();
-      setPlans(availablePlans);
+      
+      // If no plans in database, use default plan
+      if (!availablePlans || availablePlans.length === 0) {
+        const defaultPlan: SubscriptionPlan = {
+          id: 'pro-monthly',
+          name: 'Pro Plan',
+          description: 'Full access to all premium features',
+          price: 1.00,
+          currency: 'MYR',
+          interval_type: 'month',
+          interval_count: 1,
+          features: [
+            'Unlimited projects',
+            'Custom domain support',
+            'Priority support',
+            'Advanced analytics',
+            'API access',
+            'No watermark'
+          ],
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setPlans([defaultPlan]);
+      } else {
+        setPlans(availablePlans);
+      }
     } catch (error) {
       console.error('Error loading billing data:', error);
       toast.error('Failed to load billing information');
