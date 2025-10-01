@@ -271,63 +271,59 @@ export async function createBillplzPayment(
   userId: string,
   planId: string
 ): Promise<{ payment_id: string; payment_url: string } | null> {
+  // Generate mock payment session (works without database)
+  const paymentId = `pay_${Math.random().toString(36).substr(2, 9)}`;
+  const paymentUrl = `https://billplz.com/bills/${paymentId}`;
+  
+  // Try to create database record, but don't fail if tables don't exist
   try {
-    // Generate mock payment session (works without database)
-    const paymentId = `pay_${Math.random().toString(36).substr(2, 9)}`;
-    const paymentUrl = `https://billplz.com/bills/${paymentId}`;
+    // First, get or create user's subscription
+    let subscription = await getUserSubscription(userId);
     
-    // Try to create database record, but don't fail if tables don't exist
-    try {
-      // First, get or create user's subscription
-      let subscription = await getUserSubscription(userId);
-      
-      if (!subscription) {
-        // Create trial first
-        await createUserTrialSubscription(userId);
-        subscription = await getUserSubscription(userId);
-      }
-
-      // Get plan details
-      const { data: plan } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('id', planId)
-        .single();
-
-      if (plan && subscription) {
-        // Create payment record
-        await supabase
-          .from('payments')
-          .insert({
-            user_id: userId,
-            subscription_id: subscription.id,
-            amount: plan.price,
-            currency: plan.currency,
-            status: 'pending',
-            payment_method: 'billplz',
-            payment_provider_id: paymentId
-          })
-          .select()
-          .single();
-      }
-    } catch (dbError) {
-      // Database operations failed (tables don't exist yet)
-      // This is OK - we'll still return a valid payment session
-      console.log('Database not set up yet, continuing with mock payment:', dbError);
+    if (!subscription) {
+      // Create trial first
+      await createUserTrialSubscription(userId);
+      subscription = await getUserSubscription(userId);
     }
 
-    // TODO: Call Billplz API through edge function
-    // For now, return a placeholder that works without database
-    // In production, call your billplz-integration edge function
-    
-    return {
-      payment_id: paymentId,
-      payment_url: paymentUrl
-    };
-  } catch (error) {
-    console.error('Error creating Billplz payment:', error);
-    return null;
+    // Get plan details
+    const { data: plan } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+
+    if (plan && subscription) {
+      // Create payment record
+      await supabase
+        .from('payments')
+        .insert({
+          user_id: userId,
+          subscription_id: subscription.id,
+          amount: plan.price,
+          currency: plan.currency,
+          status: 'pending',
+          payment_method: 'billplz',
+          payment_provider_id: paymentId
+        })
+        .select()
+        .single();
+    }
+  } catch (dbError) {
+    // Database operations failed (tables don't exist yet)
+    // This is OK - we'll still return a valid payment session
+    console.log('Database not set up yet, continuing with mock payment:', dbError);
   }
+
+  // TODO: Call Billplz API through edge function
+  // For now, return a placeholder that works without database
+  // In production, call your billplz-integration edge function
+  
+  // Always return valid payment session (removed outer try-catch that could return null)
+  return {
+    payment_id: paymentId,
+    payment_url: paymentUrl
+  };
 }
 
 /**
