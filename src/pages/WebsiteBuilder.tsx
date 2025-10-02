@@ -95,6 +95,7 @@ const WebsiteBuilder = () => {
   const [isFullPreview, setIsFullPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [kategori, setKategori] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
   const [tahun, setTahun] = useState<number | undefined>(undefined);
   const fullPreviewIframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -129,8 +130,9 @@ const WebsiteBuilder = () => {
             } else {
               setCode(DEFAULT_HTML);
             }
-            // Load kategori and tahun values
+            // Load kategori, description, and tahun values
             setKategori(projectData.kategori || '');
+            setDescription(projectData.description || '');
             setTahun(projectData.tahun || undefined);
           } else {
             // Project not found, load default
@@ -273,7 +275,7 @@ const WebsiteBuilder = () => {
         const title = `Website - ${new Date().toLocaleDateString()}`;
         project = await createProject({
           title,
-          description: 'A website built with the code editor',
+          description: description || 'A website built with the code editor',
           code_content: code,
           language: 'html',
           is_public: true,  // Make public by default for sharing
@@ -292,6 +294,7 @@ const WebsiteBuilder = () => {
         // Update existing project in database
         project = await updateProject(project.id, {
           code_content: code,
+          description: description || undefined,
           is_public: true,  // Make public for sharing
           kategori: kategori || undefined,
           tahun: tahun || undefined,
@@ -446,6 +449,15 @@ const WebsiteBuilder = () => {
                         <SelectItem value="Pendidikan Islam">Pendidikan Islam</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium mb-2 block">Description</label>
+                    <Input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Enter project description"
+                    />
                   </div>
                   <div className="flex-1">
                     <label className="text-sm font-medium mb-2 block">Tahun</label>
