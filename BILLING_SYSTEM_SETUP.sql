@@ -1,62 +1,127 @@
--- ================================================
--- BILLING & SUBSCRIPTION SYSTEM SETUP
--- Complete database schema for billing functionality
--- ================================================
+-- ╔════════════════════════════════════════════════════════════════════╗
+-- ║              BILLING & SUBSCRIPTION SYSTEM SETUP                   ║
+-- ║                                                                    ║
+-- ║  Complete database schema for subscription billing                 ║
+-- ║  Run this entire file in Supabase SQL Editor                      ║
+-- ║                                                                    ║
+-- ║  Author: Factory AI Assistant                                     ║
+-- ║  Version: 2.0                                                     ║
+-- ║  Date: 2025-10-02                                                 ║
+-- ╚════════════════════════════════════════════════════════════════════╝
 
--- 1. Create subscription_plans table
+-- ════════════════════════════════════════════════════════════════════
+-- SECTION 1: CREATE TABLES
+-- ════════════════════════════════════════════════════════════════════
+
+-- ┌────────────────────────────────────────────────────────────────┐
+-- │ 1.1 Subscription Plans Table                                   │
+-- │ Stores available subscription plans (Pro, Enterprise, etc.)    │
+-- └────────────────────────────────────────────────────────────────┘
+
 CREATE TABLE IF NOT EXISTS public.subscription_plans (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
-  price numeric(10,2) NOT NULL,
+  price numeric(10,2) NOT NULL CHECK (price >= 0),
   currency text NOT NULL DEFAULT 'MYR',
-  interval_type text NOT NULL DEFAULT 'month', -- 'month', 'year'
+  interval_type text NOT NULL DEFAULT 'month' CHECK (interval_type IN ('day', 'week', 'month', 'year')),
+  interval_count integer NOT NULL DEFAULT 1 CHECK (interval_count > 0),
   description text,
-  features jsonb DEFAULT '[]'::jsonb,
-  is_active boolean DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT subscription_plans_pkey PRIMARY KEY (id)
+  features jsonb NOT NULL DEFAULT '[]'::jsonb,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  
+  CONSTRAINT subscription_plans_pkey PRIMARY KEY (id),
+  CONSTRAINT subscription_plans_name_unique UNIQUE (name)
 );
 
--- 2. Create user_subscriptions table
+COMMENT ON TABLE public.subscription_plans IS 'Available subscription plans with pricing and features';
+COMMENT ON COLUMN public.subscription_plans.interval_count IS 'Number of intervals (e.g., 1 month, 3 months, 1 year)';
+COMMENT ON COLUMN public.subscription_plans.features IS 'JSON array of feature strings';
+
+-- ┌────────────────────────────────────────────────────────────────┐
+-- │ 1.2 User Subscriptions Table                                   │
+-- │ Tracks each user''s subscription status and trial period        │
+-- └────────────────────────────────────────────────────────────────┘
+
 CREATE TABLE IF NOT EXISTS public.user_subscriptions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
-  status text NOT NULL DEFAULT 'trial', -- 'trial', 'active', 'expired', 'cancelled'
+  status text NOT NULL DEFAULT 'trial' CHECK (status IN ('trial', 'active', 'expired', 'cancelled')),
   plan_id uuid,
-  trial_start_date timestamp with time zone,
-  trial_end_date timestamp with time zone,
-  current_period_start timestamp with time zone,
-  current_period_end timestamp with time zone,
-  cancel_at_period_end boolean DEFAULT false,
-  cancelled_at timestamp with time zone,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  trial_start_date timestamptz,
+  trial_end_date timestamptz,
+  current_period_start timestamptz,
+  current_period_end timestamptz,
+  cancel_at_period_end boolean NOT NULL DEFAULT false,
+  cancelled_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  
   CONSTRAINT user_subscriptions_pkey PRIMARY KEY (id),
-  CONSTRAINT user_subscriptions_user_id_key UNIQUE (user_id),
-  CONSTRAINT user_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-  CONSTRAINT user_subscriptions_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.subscription_plans(id) ON DELETE SET NULL
+  CONSTRAINT user_subscriptions_user_id_unique UNIQUE (user_id),
+  CONSTRAINT user_subscriptions_user_id_fkey FOREIGN KEY (user_id) 
+    REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT user_subscriptions_plan_id_fkey FOREIGN KEY (plan_id) 
+    REFERENCES public.subscription_plans(id) ON DELETE SET NULL,
+  CONSTRAINT trial_dates_valid CHECK (
+    (trial_start_date IS NULL AND trial_end_date IS NULL) OR 
+    (trial_start_date IS NOT NULL AND trial_end_date IS NOT NULL AND trial_end_date > trial_start_date)
+  ),
+  CONSTRAINT period_dates_valid CHECK (
+    (current_period_start IS NULL AND current_period_end IS NULL) OR 
+    (current_period_start IS NOT NULL AND current_period_end IS NOT NULL AND current_period_end > current_period_start)
+  )
 );
 
--- 3. Create payments table
+COMMENT ON TABLE public.user_subscriptions IS 'User subscription status, trials, and billing periods';
+COMMENT ON COLUMN public.user_subscriptions.status IS 'Subscription status: trial, active, expired, or cancelled';
+COMMENT ON COLUMN public.user_subscriptions.cancel_at_period_end IS 'If true, subscription will not renew';
+
+-- ┌────────────────────────────────────────────────────────────────┐
+-- │ 1.3 Payments Table                                             │
+-- │ Records all payment transactions (Billplz, Stripe, etc.)       │
+-- └────────────────────────────────────────────────────────────────┘
+
 CREATE TABLE IF NOT EXISTS public.payments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
   subscription_id uuid,
-  amount numeric(10,2) NOT NULL,
+  amount numeric(10,2) NOT NULL CHECK (amount >= 0),
   currency text NOT NULL DEFAULT 'MYR',
-  status text NOT NULL DEFAULT 'pending', -- 'pending', 'paid', 'failed', 'refunded'
-  payment_method text, -- 'billplz', 'stripe', etc.
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed', 'refunded', 'cancelled')),
+  payment_method text CHECK (payment_method IN ('billplz', 'stripe', 'manual', 'other')),
+  
+  -- Billplz specific fields
   billplz_bill_id text,
   billplz_url text,
+  
+  -- Stripe specific fields
   stripe_payment_intent_id text,
-  paid_at timestamp with time zone,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  stripe_charge_id text,
+  
+  -- Payment completion
+  paid_at timestamptz,
+  failed_at timestamptz,
+  failure_reason text,
+  
+  -- Additional data
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  
   CONSTRAINT payments_pkey PRIMARY KEY (id),
-  CONSTRAINT payments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-  CONSTRAINT payments_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.user_subscriptions(id) ON DELETE SET NULL
+  CONSTRAINT payments_user_id_fkey FOREIGN KEY (user_id) 
+    REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT payments_subscription_id_fkey FOREIGN KEY (subscription_id) 
+    REFERENCES public.user_subscriptions(id) ON DELETE SET NULL,
+  CONSTRAINT payments_billplz_bill_id_unique UNIQUE (billplz_bill_id),
+  CONSTRAINT payments_stripe_payment_intent_unique UNIQUE (stripe_payment_intent_id)
 );
+
+COMMENT ON TABLE public.payments IS 'Payment transaction records for all payment methods';
+COMMENT ON COLUMN public.payments.metadata IS 'Additional payment data (gateway response, customer info, etc.)';
+COMMENT ON COLUMN public.payments.failed_at IS 'Timestamp when payment failed';
+COMMENT ON COLUMN public.payments.failure_reason IS 'Human-readable failure reason';
 
 -- ================================================
 -- ENABLE ROW LEVEL SECURITY
