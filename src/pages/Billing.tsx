@@ -105,42 +105,29 @@ const Billing = () => {
 
     setProcessingPayment(true);
     try {
-      // Show payment processing steps
-      toast.info('Preparing payment session...');
+      // Show payment processing
+      toast.loading('Creating payment session...');
       
       // Create payment record
       const result = await createBillplzPayment(user.id, planId);
       
-      if (result) {
-        // In production, redirect to payment gateway
-        // For Billplz: window.location.href = result.payment_url;
-        // For Stripe: window.location.href = result.checkout_url;
+      if (result && result.payment_url) {
+        // IMMEDIATE REDIRECT to payment gateway (like PHP: header('Location: ...'))
+        toast.success('Redirecting to payment gateway...');
         
-        toast.success('Payment session created!');
-        toast.info('🚀 In production, you will be redirected to Billplz/Stripe checkout');
+        // Redirect immediately to Billplz payment page
+        window.location.href = result.payment_url;
         
-        // Simulate payment gateway redirect
-        setTimeout(() => {
-          toast.loading('Redirecting to payment gateway...');
-        }, 1000);
-        
-        // In development, show what would happen:
-        setTimeout(() => {
-          toast.success('💡 Next steps: Complete payment → Webhook activates subscription → Instant access');
-        }, 2000);
-        
-        // Uncomment in production:
-        // window.location.href = result.payment_url;
+        // Note: Code below won't execute because page will redirect
+        // User will complete payment on Billplz → Billplz redirects back → Webhook activates subscription
       } else {
         toast.error('Failed to create payment session');
+        setProcessingPayment(false);
       }
     } catch (error) {
       console.error('Error processing payment:', error);
       toast.error('Payment processing failed. Please try again.');
-    } finally {
-      setTimeout(() => {
-        setProcessingPayment(false);
-      }, 3000);
+      setProcessingPayment(false);
     }
   };
 
