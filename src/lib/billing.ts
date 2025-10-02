@@ -265,25 +265,19 @@ export async function getUserPayments(userId: string): Promise<Payment[]> {
 }
 
 /**
- * Create a payment record for Billplz
+ * Create a payment record for Billplz via Edge Function
+ * This calls the real Billplz API and returns a real payment URL
  */
 export async function createBillplzPayment(
   userId: string,
   planId: string
 ): Promise<{ payment_id: string; payment_url: string } | null> {
-  // Generate mock payment session (works without database)
-  const paymentId = `pay_${Math.random().toString(36).substr(2, 9)}`;
-  const paymentUrl = `https://billplz.com/bills/${paymentId}`;
-  
-  // Try to create database record, but don't fail if tables don't exist
   try {
-    // First, get or create user's subscription
-    let subscription = await getUserSubscription(userId);
+    // Get user info for payment
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!subscription) {
-      // Create trial first
-      await createUserTrialSubscription(userId);
-      subscription = await getUserSubscription(userId);
+    if (!user || !user.email) {
+      throw new Error('User not authenticated or missing email');
     }
 
     // Get plan details
@@ -293,37 +287,72 @@ export async function createBillplzPayment(
       .eq('id', planId)
       .single();
 
-    if (plan && subscription) {
-      // Create payment record
-      await supabase
-        .from('payments')
-        .insert({
-          user_id: userId,
-          subscription_id: subscription.id,
-          amount: plan.price,
-          currency: plan.currency,
-          status: 'pending',
-          payment_method: 'billplz',
-          payment_provider_id: paymentId
-        })
-        .select()
-        .single();
+    if (!plan) {
+      throw new Error('Plan not found');
     }
-  } catch (dbError) {
-    // Database operations failed (tables don't exist yet)
-    // This is OK - we'll still return a valid payment session
-    console.log('Database not set up yet, continuing with mock payment:', dbError);
-  }
 
-  // TODO: Call Billplz API through edge function
-  // For now, return a placeholder that works without database
-  // In production, call your billplz-integration edge function
-  
-  // Always return valid payment session (removed outer try-catch that could return null)
-  return {
-    payment_id: paymentId,
-    payment_url: paymentUrl
-  };
+    // Get user's full name from profile
+    let customerName = user.email.split('@')[0]; // Fallback to email username
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', userId)
+        .single();
+      
+      if (profile?.full_name) {
+        customerName = profile.full_name;
+      }
+    } catch (error) {
+      console.warn('Could not fetch profile name:', error);
+    }
+
+    // Get Supabase URL and anon key
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL not configured');
+    }
+
+    // Call Edge Function to create real Billplz payment
+    const response = await fetch(`${supabaseUrl}/functions/v1/create-billplz-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        plan_id: planId,
+        amount: plan.price,
+        currency: plan.currency || 'MYR',
+        description: `${plan.name} - Subscription`,
+        customer_email: user.email,
+        customer_name: customerName
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create payment');
+    }
+
+    const result = await response.json();
+
+    if (!result.success || !result.payment_url) {
+      throw new Error('Invalid payment response from server');
+    }
+
+    // Return real payment data from Billplz
+    return {
+      payment_id: result.payment_id,
+      payment_url: result.payment_url
+    };
+  } catch (error) {
+    console.error('Error creating Billplz payment:', error);
+    throw error; // Re-throw to be handled by caller
+  }
 }
 
 /**

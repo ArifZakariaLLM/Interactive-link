@@ -108,25 +108,29 @@ const Billing = () => {
       // Show payment processing
       toast.loading('Creating payment session...');
       
-      // Create payment record
+      // Create payment record (calls real Billplz API via Edge Function)
       const result = await createBillplzPayment(user.id, planId);
       
       if (result && result.payment_url) {
         // IMMEDIATE REDIRECT to payment gateway (like PHP: header('Location: ...'))
-        toast.success('Redirecting to payment gateway...');
+        toast.success('Redirecting to Billplz payment gateway...');
         
-        // Redirect immediately to Billplz payment page
+        // Redirect immediately to real Billplz payment page
         window.location.href = result.payment_url;
         
         // Note: Code below won't execute because page will redirect
         // User will complete payment on Billplz → Billplz redirects back → Webhook activates subscription
       } else {
-        toast.error('Failed to create payment session');
+        toast.error('Failed to create payment session. Please try again.');
         setProcessingPayment(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing payment:', error);
-      toast.error('Payment processing failed. Please try again.');
+      
+      // Show specific error message
+      const errorMessage = error?.message || 'Payment processing failed. Please try again.';
+      toast.error(errorMessage);
+      
       setProcessingPayment(false);
     }
   };
