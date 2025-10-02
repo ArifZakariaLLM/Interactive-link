@@ -316,6 +316,8 @@ export async function createBillplzPayment(
     }
 
     // Call Edge Function to create real Billplz payment
+    console.log('Calling Edge Function at:', `${supabaseUrl}/functions/v1/create-billplz-payment`);
+    
     const response = await fetch(`${supabaseUrl}/functions/v1/create-billplz-payment`, {
       method: 'POST',
       headers: {
@@ -333,12 +335,29 @@ export async function createBillplzPayment(
       })
     });
 
+    console.log('Edge Function response status:', response.status);
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create payment');
+      let errorMessage = 'Failed to create payment';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If can't parse JSON, check if it's a 404 (function not deployed)
+        if (response.status === 404) {
+          errorMessage = 'Edge Function not deployed. Please deploy the create-billplz-payment function.';
+        } else {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+      }
+      
+      console.error('Edge Function error:', errorMessage);
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
+    console.log('Edge Function result:', result);
 
     if (!result.success || !result.payment_url) {
       throw new Error('Invalid payment response from server');
@@ -349,8 +368,14 @@ export async function createBillplzPayment(
       payment_id: result.payment_id,
       payment_url: result.payment_url
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating Billplz payment:', error);
+    
+    // Add more context to the error
+    if (error.message.includes('Edge Function not deployed')) {
+      throw new Error('Payment system not configured. Please contact support.');
+    }
+    
     throw error; // Re-throw to be handled by caller
   }
 }
