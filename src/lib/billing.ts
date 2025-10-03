@@ -309,14 +309,20 @@ export async function createBillplzPayment(
 
     // Get Supabase URL and anon key
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl) {
       throw new Error('Supabase URL not configured');
     }
 
+    if (!supabaseKey) {
+      throw new Error('Supabase API key not configured');
+    }
+
     // Call Edge Function to create real Billplz payment
     console.log('Calling Edge Function at:', `${supabaseUrl}/functions/v1/create-billplz-payment`);
+    console.log('Using Supabase URL:', supabaseUrl);
+    console.log('API Key available:', supabaseKey ? 'Yes' : 'No');
     
     const response = await fetch(`${supabaseUrl}/functions/v1/create-billplz-payment`, {
       method: 'POST',

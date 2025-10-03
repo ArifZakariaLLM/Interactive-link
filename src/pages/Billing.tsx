@@ -104,12 +104,19 @@ const Billing = () => {
     if (!user) return;
 
     setProcessingPayment(true);
+    
+    // Dismiss any existing toasts
+    toast.dismiss();
+    
     try {
       // Show payment processing
-      toast.loading('Creating payment session...');
+      const loadingToast = toast.loading('Creating payment session...');
       
       // Create payment record (calls real Billplz API via Edge Function)
       const result = await createBillplzPayment(user.id, planId);
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
       
       if (result && result.payment_url) {
         // IMMEDIATE REDIRECT to payment gateway (like PHP: header('Location: ...'))
@@ -127,9 +134,28 @@ const Billing = () => {
     } catch (error: any) {
       console.error('Error processing payment:', error);
       
-      // Show specific error message
-      const errorMessage = error?.message || 'Payment processing failed. Please try again.';
-      toast.error(errorMessage);
+      // Dismiss any loading toasts
+      toast.dismiss();
+      
+      // Show specific error message based on error type
+      let errorMessage = 'Payment processing failed. Please try again.';
+      
+      if (error?.message) {
+        if (error.message.includes('Edge Function not deployed') || 
+            error.message.includes('Payment system not configured')) {
+          errorMessage = '⚠️ Payment system is not configured yet. Please run the database setup and deploy the Edge Function first.';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          errorMessage = '🌐 Network error. Please check your internet connection and try again.';
+        } else if (error.message.includes('404')) {
+          errorMessage = '⚠️ Payment service not available. The Edge Function needs to be deployed.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(errorMessage, {
+        duration: 6000, // Show for 6 seconds
+      });
       
       setProcessingPayment(false);
     }
