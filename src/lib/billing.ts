@@ -376,13 +376,24 @@ export async function createBillplzPayment(
     };
   } catch (error: any) {
     console.error('Error creating Billplz payment:', error);
+    console.error('Error type:', error.constructor?.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     
-    // Add more context to the error
-    if (error.message.includes('Edge Function not deployed')) {
-      throw new Error('Payment system not configured. Please contact support.');
+    // Check if it's a genuine network error (TypeError with "Failed to fetch")
+    // This happens when fetch itself fails (CORS, network down, Edge Function not deployed)
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error('TypeError: Failed to fetch detected');
+      throw new Error('Edge Function is not deployed or not accessible. Please deploy the create-billplz-payment Edge Function first.');
     }
     
-    throw error; // Re-throw to be handled by caller
+    // If it's our custom error with message, preserve it
+    if (error.message) {
+      throw error;
+    }
+    
+    // Generic fallback
+    throw new Error('Payment system error. Please try again.');
   }
 }
 

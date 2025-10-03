@@ -141,14 +141,19 @@ const Billing = () => {
       let errorMessage = 'Payment processing failed. Please try again.';
       
       if (error?.message) {
-        if (error.message.includes('Edge Function not deployed') || 
+        if (error.message.includes('Edge Function is not deployed') || 
+            error.message.includes('Edge Function not deployed') ||
+            error.message.includes('not accessible') ||
             error.message.includes('Payment system not configured')) {
-          errorMessage = '⚠️ Payment system is not configured yet. Please run the database setup and deploy the Edge Function first.';
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          errorMessage = '🌐 Network error. Please check your internet connection and try again.';
+          errorMessage = '⚠️ Payment Edge Function not deployed. Please deploy it first:\n\nsupabase functions deploy create-billplz-payment';
         } else if (error.message.includes('404')) {
-          errorMessage = '⚠️ Payment service not available. The Edge Function needs to be deployed.';
+          errorMessage = '⚠️ Payment service not found (404). The Edge Function needs to be deployed.';
+        } else if (error.message.includes('500') || error.message.includes('Server error')) {
+          errorMessage = '⚠️ Server error. Check Edge Function logs:\n\nsupabase functions logs create-billplz-payment';
+        } else if (error.message.includes('Billplz credentials')) {
+          errorMessage = '⚠️ Billplz credentials not configured. Set them with:\n\nsupabase secrets set BILLPLZ_API_KEY=your-key';
         } else {
+          // Use the error message as-is (it's already descriptive)
           errorMessage = error.message;
         }
       }
