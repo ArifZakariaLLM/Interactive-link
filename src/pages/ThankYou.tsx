@@ -23,8 +23,10 @@ const ThankYou = () => {
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
-      // Get bill ID from URL params
-      const billId = searchParams.get('billplz[id]') || searchParams.get('billplz_id');
+      // Get bill ID from URL params (handles both Billplz redirect format and our direct links)
+      const billId = searchParams.get('billplz[id]') || 
+                     searchParams.get('billplz_id') || 
+                     searchParams.get('bill_id');
       const isPaid = searchParams.get('billplz[paid]') || searchParams.get('paid');
 
       if (!billId) {

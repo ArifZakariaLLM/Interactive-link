@@ -422,7 +422,7 @@ const Billing = () => {
             {payments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No billing history yet</p>
+                <p>No payment yet</p>
                 <p className="text-sm">Your payment history will appear here</p>
               </div>
             ) : (
@@ -433,16 +433,8 @@ const Billing = () => {
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-full ${
-                        payment.status === 'paid' ? 'bg-green-100' :
-                        payment.status === 'pending' ? 'bg-yellow-100' :
-                        'bg-red-100'
-                      }`}>
-                        <CreditCard className={`h-4 w-4 ${
-                          payment.status === 'paid' ? 'text-green-600' :
-                          payment.status === 'pending' ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`} />
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <CreditCard className="h-4 w-4 text-primary" />
                       </div>
                       <div>
                         <p className="font-medium">
@@ -451,20 +443,26 @@ const Billing = () => {
                         <p className="text-sm text-muted-foreground">
                           {formatDate(payment.paid_at || payment.created_at)}
                         </p>
+                        {payment.billplz_bill_id && (
+                          <p className="text-xs text-muted-foreground font-mono">
+                            ID: {payment.billplz_bill_id}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge variant={
-                        payment.status === 'paid' ? 'default' :
-                        payment.status === 'pending' ? 'secondary' :
-                        'destructive'
-                      }>
-                        {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                      </Badge>
-                      {payment.billplz_bill_id && (
-                        <p className="text-xs text-muted-foreground mt-1 font-mono">
-                          {payment.billplz_bill_id}
-                        </p>
+                      {payment.billplz_bill_id ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/thank-you?billplz_id=${payment.billplz_bill_id}`)}
+                          className="gap-2"
+                        >
+                          <Check className="h-4 w-4" />
+                          View Receipt
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No receipt</span>
                       )}
                     </div>
                   </div>
