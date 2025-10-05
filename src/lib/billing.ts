@@ -71,6 +71,24 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
 }
 
 /**
+ * Get user's payment history
+ */
+export async function getUserPayments(userId: string): Promise<Payment[]> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching payments:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
  * Create a 7-day trial subscription for a new user
  */
 export async function createUserTrialSubscription(userId: string): Promise<string | null> {

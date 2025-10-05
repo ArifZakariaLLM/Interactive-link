@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import ProjectCommunity from "./pages/ProjectCommunity";
 import Billing from "./pages/Billing";
+import ThankYou from "./pages/ThankYou";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/billing" element={<Billing />} />
+            <Route path="/thank-you" element={<ThankYou />} />
             <Route path="/community" element={<ProjectCommunity />} />
             <Route path="/editor" element={<Editor />} />
             <Route path="/editor/:projectId" element={<Editor />} />
