@@ -265,24 +265,6 @@ export function canMakeCallsSync(subscription: UserSubscription | null): boolean
 // ================================================
 
 /**
- * Get user's payment history
- */
-export async function getUserPayments(userId: string): Promise<Payment[]> {
-  const { data, error } = await supabase
-    .from('payments')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching payments:', error);
-    return [];
-  }
-
-  return data || [];
-}
-
-/**
  * Create a payment record for Billplz via Edge Function
  * This calls the real Billplz API and returns a real payment URL
  */
@@ -295,8 +277,11 @@ export async function createBillplzPayment(
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user || !user.email) {
+      console.error('User authentication failed:', { user, hasEmail: !!user?.email });
       throw new Error('User not authenticated or missing email');
     }
+    
+    console.log('User email for payment:', user.email);
 
     // Get plan details
     const { data: plan } = await supabase
