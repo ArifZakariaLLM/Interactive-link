@@ -6,13 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Users, Search, Globe, ExternalLink, Eye, Calendar, Lock, Unlock, Filter } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, Users, Search, Globe, ExternalLink, Eye, Calendar, Lock, Unlock, Filter, Crown, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUsersInfo } from '@/utils/communityUtils';
 import { formatTimeAgo } from '@/utils/userUtils';
 import { toast } from 'sonner';
 import { KATEGORI_OPTIONS } from '@/components/website-builder/CategorySelector';
+import { getUserSubscription, type UserSubscription } from '@/lib/billing';
 
 interface CommunityProject {
   id: number;
@@ -40,8 +43,24 @@ const ProjectCommunity = () => {
   const [selectedKategori, setSelectedKategori] = useState<string>('all');
   const [selectedTahun, setSelectedTahun] = useState<string>('all');
   const [userProjects, setUserProjects] = useState<Set<number>>(new Set());
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('free');
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Check if user has active subscription
+  const hasActiveSubscription = subscription?.status === 'active';
+
+  // Fetch subscription status
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (user) {
+        const userSub = await getUserSubscription(user.id);
+        setSubscription(userSub);
+      }
+    };
+    fetchSubscription();
+  }, [user]);
 
   // Fetch all public community projects
   useEffect(() => {
@@ -288,20 +307,47 @@ const ProjectCommunity = () => {
           )}
         </div>
 
-        {/* Projects Grid */}
-        {filteredProjects.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">No community projects yet</p>
-              <p className="text-sm text-muted-foreground">
-                Projects shared by users will appear here
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredProjects.map((project) => (
+        {/* Community Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="free" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Free Community
+            </TabsTrigger>
+            <TabsTrigger 
+              value="subscribers" 
+              className="flex items-center gap-2"
+              disabled={!hasActiveSubscription}
+            >
+              <Crown className="h-4 w-4" />
+              Subscribers Only
+              {!hasActiveSubscription && <Lock className="h-3 w-3" />}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Free Community Tab */}
+          <TabsContent value="free" className="mt-6">
+            <Alert className="mb-6">
+              <Users className="h-4 w-4" />
+              <AlertDescription>
+                Welcome to the Free Community! All projects here are accessible to everyone. 
+                Upgrade to Pro to access exclusive subscriber-only projects.
+              </AlertDescription>
+            </Alert>
+
+            {filteredProjects.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-lg font-medium mb-2">No community projects yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Projects shared by users will appear here
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredProjects.map((project) => (
               <Card key={project.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -425,6 +471,173 @@ const ProjectCommunity = () => {
             ))}
           </div>
         )}
+          </TabsContent>
+
+          {/* Subscribers Only Tab */}
+          <TabsContent value="subscribers" className="mt-6">
+            {!hasActiveSubscription ? (
+              <Card className="text-center py-12 border-2 border-primary/20">
+                <CardContent>
+                  <Crown className="h-16 w-16 mx-auto mb-4 text-primary" />
+                  <h3 className="text-2xl font-bold mb-2">Subscribers Only</h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    Upgrade to Pro to access exclusive projects, templates, and premium content shared by our community members.
+                  </p>
+                  <Button 
+                    size="lg"
+                    onClick={() => navigate('/billing')}
+                    className="gap-2"
+                  >
+                    <Crown className="h-4 w-4" />
+                    Upgrade to Pro
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <Alert className="mb-6 bg-primary/5 border-primary/20">
+                  <Crown className="h-4 w-4 text-primary" />
+                  <AlertDescription>
+                    <span className="font-semibold">Premium Content:</span> Access exclusive projects and resources from Pro members only.
+                  </AlertDescription>
+                </Alert>
+
+                {filteredProjects.length === 0 ? (
+                  <Card className="text-center py-12">
+                    <CardContent>
+                      <Crown className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-lg font-medium mb-2">No subscriber projects yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Premium projects from Pro members will appear here
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredProjects.map((project) => (
+                      <Card key={project.id} className="relative overflow-hidden hover:shadow-lg transition-shadow border-primary/20">
+                        <div className="absolute top-2 right-2">
+                          <Badge className="bg-primary gap-1">
+                            <Crown className="h-3 w-3" />
+                            Pro
+                          </Badge>
+                        </div>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                {project.title}
+                                {userProjects.has(project.id) && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Your Project
+                                  </Badge>
+                                )}
+                              </CardTitle>
+                              <CardDescription className="text-xs mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatTimeAgo(project.created_at)}
+                                </span>
+                              </CardDescription>
+                            </div>
+                            {userProjects.has(project.id) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleCommunityVisibility(project.id, project.is_community_visible)}
+                                title={project.is_community_visible ? "Hide from community" : "Share with community"}
+                              >
+                                {project.is_community_visible ? (
+                                  <Unlock className="h-4 w-4" />
+                                ) : (
+                                  <Lock className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {project.description && (
+                            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                              {project.description}
+                            </p>
+                          )}
+
+                          {project.domains.length > 0 && (
+                            <div className="space-y-2 mb-3">
+                              {project.domains.slice(0, 2).map((domain, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-sm">
+                                  <Globe className="h-3 w-3 text-muted-foreground" />
+                                  <a
+                                    href={`https://${domain.domain_name}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-mono text-blue-600 hover:underline flex items-center gap-1"
+                                  >
+                                    {domain.domain_name}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {(project.kategori || project.tahun) && (
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                              {project.kategori && (
+                                <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-200 text-xs">
+                                  {project.kategori}
+                                </Badge>
+                              )}
+                              {project.tahun && (
+                                <Badge variant="outline" className="border-green-200 text-green-700 text-xs">
+                                  {project.tahun}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                const slug = project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                                window.open(`/${project.id}/${slug}`, '_blank');
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Preview
+                            </Button>
+                            {project.domains.length > 0 && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => window.open(`https://${project.domains[0].domain_name}`, '_blank')}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                Visit Site
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <span className="text-gray-400">By:</span>
+                              <span className="font-medium text-gray-600">{project.user_username}</span>
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
