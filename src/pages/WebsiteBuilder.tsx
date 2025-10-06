@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Save, Settings, Files, Globe, Code2, Maximize, ExternalLink, X, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -97,6 +98,8 @@ const WebsiteBuilder = () => {
   const [kategori, setKategori] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [tahun, setTahun] = useState<number | undefined>(undefined);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [tempDescription, setTempDescription] = useState<string>("");
   const fullPreviewIframeRef = useRef<HTMLIFrameElement>(null);
 
   // Load project on mount and when projectId changes
@@ -397,7 +400,10 @@ const WebsiteBuilder = () => {
               </Button>
             </>
           )}
-          <Button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2">
+          <Button onClick={() => {
+            setTempDescription(description);
+            setShowSaveDialog(true);
+          }} disabled={isSaving} className="flex items-center gap-2">
             <Save className="h-4 w-4" />
             {isSaving ? 'Saving...' : 'Save & Version'}
           </Button>
@@ -532,6 +538,42 @@ const WebsiteBuilder = () => {
           />
         </div>
       )}
+
+      {/* Save Dialog with Description */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Project</DialogTitle>
+            <DialogDescription>
+              Add a description for your project (optional)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Project Description</label>
+              <Textarea
+                value={tempDescription}
+                onChange={(e) => setTempDescription(e.target.value)}
+                placeholder="Enter project description..."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              setDescription(tempDescription);
+              setShowSaveDialog(false);
+              await handleSave();
+            }} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Project'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
