@@ -20,6 +20,7 @@ const ThankYou = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [payment, setPayment] = useState<PaymentDetails | null>(null);
+  const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false);
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
