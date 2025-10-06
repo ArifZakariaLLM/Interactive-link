@@ -451,15 +451,6 @@ const WebsiteBuilder = () => {
                     </Select>
                   </div>
                   <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Description</label>
-                    <Input
-                      type="text"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Enter project description"
-                    />
-                  </div>
-                  <div className="flex-1">
                     <label className="text-sm font-medium mb-2 block">Tahun</label>
                     <Input
                       type="number"
