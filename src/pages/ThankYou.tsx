@@ -32,6 +32,8 @@ const ThankYou = () => {
       
       // Check if payment was actually paid (Billplz returns 'true' for paid, 'false' for cancelled)
       const paidStatus = isPaid === 'true' || isPaid === '1';
+      
+      console.log('Payment URL params:', { billId, isPaid, paidStatus });
 
       if (!billId) {
         // No bill ID, redirect to billing
