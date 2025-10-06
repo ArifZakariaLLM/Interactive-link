@@ -72,7 +72,7 @@ serve(async (req) => {
 
     // Prepare callback and redirect URLs
     const callbackUrl = `${APP_URL}/api/billplz-webhook`
-    const redirectUrl = `${APP_URL}/billing?payment=success`
+    const redirectUrl = `${APP_URL}/thank-you`
 
     // Prepare Billplz API request
     const billplzData = {
