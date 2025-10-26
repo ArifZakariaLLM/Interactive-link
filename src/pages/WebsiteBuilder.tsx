@@ -456,17 +456,6 @@ const WebsiteBuilder = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Tahun</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="3"
-                      value={tahun || ''}
-                      onChange={(e) => setTahun(e.target.value ? parseInt(e.target.value) : undefined)}
-                      placeholder="Tingkatan (1, 2, atau 3)"
-                    />
-                  </div>
                   <div className="flex items-end">
                     <Button variant="outline" size="sm" className="h-10">
                       <Eye className="h-4 w-4 mr-2" />

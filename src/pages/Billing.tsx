@@ -270,18 +270,16 @@ const Billing = () => {
               {isActive && (
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Plan:</span>
-                    <span className="font-medium">Pro Plan</span>
+                    <span className="text-muted-foreground">Subscription:</span>
+                    <span className="font-medium">Per Project</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Billing Period:</span>
-                    <span className="font-medium">Monthly</span>
+                    <span className="text-muted-foreground">Billing Model:</span>
+                    <span className="font-medium">Pay Per Project</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Next Billing Date:</span>
-                    <span className="font-medium">
-                      {subscription?.current_period_end && formatDate(subscription.current_period_end)}
-                    </span>
+                    <span className="text-muted-foreground">Status:</span>
+                    <span className="font-medium text-green-600">Active</span>
                   </div>
                 </div>
               )}
@@ -317,19 +315,19 @@ const Billing = () => {
                   </div>
                 </div>
                 <div className="pt-4 border-t">
-                  <div className="text-sm font-medium mb-2">Features</div>
+                  <div className="text-sm font-medium mb-2">Per Project Benefits</div>
                   <ul className="text-xs space-y-1 text-muted-foreground">
                     <li className="flex items-center gap-2">
                       <Check className="h-3 w-3 text-green-500" />
-                      Unlimited projects
+                      One-time payment per project
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-3 w-3 text-green-500" />
-                      Custom domains
+                      Lifetime project access
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-3 w-3 text-green-500" />
-                      Priority support
+                      No recurring fees
                     </li>
                   </ul>
                 </div>
@@ -342,12 +340,12 @@ const Billing = () => {
         {(isOnTrial || !isActive) && (
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">
-              {isOnTrial ? 'Upgrade to Pro' : 'Choose Your Plan'}
+              {isOnTrial ? 'Publish Your Project' : 'Choose a Project Plan'}
             </h2>
             <p className="text-muted-foreground mb-6">
               {isOnTrial 
-                ? 'Upgrade now to continue enjoying all features after your trial ends' 
-                : 'Subscribe to unlock all premium features and continue building'}
+                ? 'Pay once per project - No monthly fees, lifetime access' 
+                : 'Pay per project to publish and get lifetime access'}
             </p>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {plans.map((plan) => (
