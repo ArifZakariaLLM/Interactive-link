@@ -10,13 +10,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Calendar, User, LogOut, Trash2, Edit, Globe, ChevronDown, Eye, FileEdit, Link, Copy, ExternalLink, RefreshCw, CheckCircle, Users, EyeOff, Lock, Unlock, CreditCard } from 'lucide-react';
+import { Plus, Calendar, User, LogOut, Trash2, Edit, Globe, ChevronDown, Eye, FileEdit, Link, Copy, ExternalLink, RefreshCw, CheckCircle, Users, EyeOff, Lock, Unlock, CreditCard, Rocket, Check } from 'lucide-react';
 import { cleanEmailForDisplay, formatTimeAgo } from '@/utils/userUtils';
 import { FileManager } from '@/utils/fileManager';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { verifyDomain } from '@/utils/dnsVerification';
 import { addDomainToVercel, removeDomainFromVercel } from '@/utils/vercelApi';
+import { createProjectPayment } from '@/lib/billing';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
