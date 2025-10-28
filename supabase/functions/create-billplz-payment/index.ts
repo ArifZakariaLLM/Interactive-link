@@ -11,7 +11,8 @@ const corsHeaders = {
 
 interface BillplzRequest {
   user_id: string;
-  plan_id: string;
+  plan_id?: string;
+  project_id?: string;
   amount: number;
   currency: string;
   description: string;
