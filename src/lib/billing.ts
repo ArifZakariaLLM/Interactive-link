@@ -418,6 +418,134 @@ export async function checkBillplzPayment(billId: string): Promise<Payment | nul
   return data;
 }
 
+/**
+ * Create a per-project payment via Billplz
+ * This creates a one-time payment for a specific project
+ */
+export async function createProjectPayment(
+  userId: string,
+  projectId: string,
+  amount: number = 5.00
+): Promise<{ payment_id: string; payment_url: string } | null> {
+  try {
+    // Get user info for payment
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user || !user.email) {
+      console.error('User authentication failed');
+      throw new Error('User not authenticated or missing email');
+    }
+
+    // Get project details
+    const { data: project } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .single();
+
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    // Check if project is already paid
+    if (project.is_paid) {
+      throw new Error('Project is already published');
+    }
+
+    // Get user's full name from profile
+    let customerName = user.email.split('@')[0];
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', userId)
+        .single();
+      
+      if (profile?.full_name) {
+        customerName = profile.full_name;
+      }
+    } catch (error) {
+      console.warn('Could not fetch profile name:', error);
+    }
+
+    // Get Supabase URL and anon key
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL not configured');
+    }
+
+    if (!supabaseKey) {
+      throw new Error('Supabase API key not configured');
+    }
+
+    // Call Edge Function to create real Billplz payment for project
+    console.log('Creating project payment for:', project.title);
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/create-billplz-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        project_id: projectId, // NEW: Link to specific project
+        amount: amount,
+        currency: 'MYR',
+        description: `Publish Project: ${project.title}`,
+        customer_email: user.email,
+        customer_name: customerName
+      })
+    });
+
+    console.log('Edge Function response status:', response.status);
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to create payment';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        if (response.status === 404) {
+          errorMessage = 'Edge Function not deployed. Please deploy the create-billplz-payment function.';
+        } else {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+      }
+      
+      console.error('Edge Function error:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('Edge Function result:', result);
+
+    if (!result.success || !result.payment_url) {
+      throw new Error('Invalid payment response from server');
+    }
+
+    return {
+      payment_id: result.payment_id,
+      payment_url: result.payment_url
+    };
+  } catch (error: any) {
+    console.error('Error creating project payment:', error);
+    
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Edge Function is not deployed or not accessible.');
+    }
+    
+    if (error.message) {
+      throw error;
+    }
+    
+    throw new Error('Payment system error. Please try again.');
+  }
+}
+
 // ================================================
 // ADMIN/TESTING FUNCTIONS
 // ================================================

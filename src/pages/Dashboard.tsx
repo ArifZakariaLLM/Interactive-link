@@ -31,6 +31,7 @@ const Dashboard = () => {
   const [isAddingDomain, setIsAddingDomain] = useState(false);
   const [verifyingDomains, setVerifyingDomains] = useState<Set<string>>(new Set());
   const [togglingVisibility, setTogglingVisibility] = useState<Set<number>>(new Set());
+  const [processingPayment, setProcessingPayment] = useState<Set<number>>(new Set());
 
   // Function to toggle project visibility in community
   const handleToggleCommunityVisibility = async (projectId: number, currentVisibility: boolean) => {
@@ -292,6 +293,57 @@ const Dashboard = () => {
     }
   };
 
+  const handlePublishProject = async (projectId: number) => {
+    if (!user) return;
+
+    setProcessingPayment(prev => new Set(prev).add(projectId));
+    toast.dismiss();
+
+    try {
+      const loadingToast = toast.loading('Creating payment session...');
+      
+      // Create payment for this specific project
+      const result = await createProjectPayment(user.id, projectId.toString(), 5.00);
+      
+      toast.dismiss(loadingToast);
+      
+      if (result && result.payment_url) {
+        toast.success('Redirecting to Billplz payment gateway...');
+        // Redirect to Billplz payment page
+        window.location.href = result.payment_url;
+      } else {
+        toast.error('Failed to create payment session. Please try again.');
+        setProcessingPayment(prev => {
+          const next = new Set(prev);
+          next.delete(projectId);
+          return next;
+        });
+      }
+    } catch (error: any) {
+      console.error('Error processing payment:', error);
+      toast.dismiss();
+      
+      let errorMessage = 'Payment processing failed. Please try again.';
+      if (error?.message) {
+        if (error.message.includes('already published')) {
+          errorMessage = 'This project is already published!';
+        } else if (error.message.includes('Edge Function')) {
+          errorMessage = '⚠️ Payment system not configured. Please contact support.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(errorMessage, { duration: 6000 });
+      
+      setProcessingPayment(prev => {
+        const next = new Set(prev);
+        next.delete(projectId);
+        return next;
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -522,8 +574,27 @@ const Dashboard = () => {
                       onClick={() => navigate(`/website-builder/${project.id}`)}
                     >
                       <Globe className="h-4 w-4 mr-2" />
-                      Website Builder
+                      Edit
                     </Button>
+                  </div>
+                  
+                  {/* Publish Button */}
+                  <div className="mt-3 pt-3 border-t">
+                    {!project.is_paid ? (
+                      <Button
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        onClick={() => handlePublishProject(project.id)}
+                        disabled={processingPayment.has(project.id)}
+                      >
+                        <Rocket className="h-4 w-4 mr-2" />
+                        {processingPayment.has(project.id) ? 'Processing...' : 'Publish Project - RM 5.00'}
+                      </Button>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2 py-2 px-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-600">Published</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Domain Section - Railway Style */}
